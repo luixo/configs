@@ -43,4 +43,13 @@ export const config: ReturnType<typeof defineConfig> = {
     "import/prefer-default-export": "off",
     "import/no-named-export": "off",
   },
+  overrides: [
+    {
+      files: ["**/*.config.{j,t}s"],
+      rules: {
+        // Config files tend to export default
+        "import/no-default-export": "off",
+      },
+    },
+  ],
 } as const;
