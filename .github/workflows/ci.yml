@@ -2,6 +2,7 @@ name: CI
 on: [pull_request]
 jobs:
   check:
+    if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
