@@ -5,6 +5,7 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
+      - run: git fetch origin main
       - uses: ./.github/actions/setup-env
       - run: bun run lint
       - run: bun run format:verify
