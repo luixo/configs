@@ -1,3 +1,3 @@
-import { getConfig } from "./packages/oxfmt/config.ts";
+import { getConfig } from "./src/oxfmt.ts";
 
 export default getConfig();

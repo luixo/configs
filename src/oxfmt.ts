@@ -1,5 +1,7 @@
 import type { OxfmtConfig } from "oxfmt";
 
+import { baseIgnorePatterns } from "./common.ts";
+
 type ConfigOptions = OxfmtConfig & {
 	tailwind?: {
 		stylesheet: string;
@@ -19,10 +21,8 @@ export const getConfig = async ({
 }: ConfigOptions = {}) =>
 	({
 		astro: true,
-		ignorePatterns: [".history/", "bun.lock", ...ignorePatterns],
+		ignorePatterns: [...baseIgnorePatterns, ...ignorePatterns],
 		printWidth: 80,
-		semi: true,
-		singleQuote: false,
 		sortImports:
 			sortImports ??
 			(imports
@@ -32,15 +32,15 @@ export const getConfig = async ({
 						...imports,
 					}
 				: true),
-		sortPackageJson: true,
+		sortPackageJson: {
+			sortScripts: true,
+		},
 		sortTailwindcss: tailwind
 			? {
 					functions: tailwind.functions,
 					stylesheet: tailwind.stylesheet,
 				}
 			: undefined,
-		tabWidth: 2,
-		trailingComma: "all",
 		useTabs: true,
 		...rest,
 	}) as const satisfies OxfmtConfig;

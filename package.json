@@ -21,14 +21,14 @@
 		"access": "public"
 	},
 	"scripts": {
-		"typecheck": "bun check",
 		"build": "tsdown",
 		"changeset": "changeset add",
-		"format": "oxfmt --write",
-		"format:verify": "oxfmt --check",
-		"lint": "oxlint",
-		"lint:fix": "oxlint --fix",
-		"lint-staged": "lint-staged"
+		"format": "bun --bun oxfmt --write",
+		"format:verify": "bun --bun oxfmt --check",
+		"lint": "bun --bun oxlint",
+		"lint-staged": "lint-staged",
+		"lint:fix": "bun lint --fix",
+		"typecheck": "bun check"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/core": "^0.18.5",
@@ -52,16 +52,13 @@
 		"oxlint": "^1.88.0"
 	},
 	"lint-staged": {
-		"*.{js,jsx,ts,tsx,mjs,cjs,astro}": [
-			"oxfmt --write",
-			"oxlint --fix"
-		],
-		"*.{json,jsonc,css,md,mdx,yml,yaml}": [
-			"oxfmt --write"
+		"*.{js,jsx,ts,tsx}": [
+			"bun --bun oxlint --fix"
 		]
 	},
 	"pre-commit": [
 		"typecheck",
+		"format",
 		"lint-staged"
 	],
 	"engines": {

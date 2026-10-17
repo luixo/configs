@@ -1,11 +1,8 @@
-import type {
-	DummyRuleMap,
-	OxlintConfig,
-	OxlintEnv,
-	OxlintOverride,
-} from "oxlint";
+import type { OxlintConfig } from "oxlint";
 
-export const disabledRules: DummyRuleMap = {
+import { baseIgnorePatterns } from "./common.ts";
+
+export const disabledRules: OxlintConfig["rules"] = {
 	// We don't care that much
 	"eslint/capitalized-comments": "off",
 	// Typescript version is typescript/switch-exhaustiveness-check
@@ -65,6 +62,8 @@ export const disabledRules: DummyRuleMap = {
 	// We use a lot of rest spreading
 	"oxc/no-rest-spread-properties": "off",
 
+	// We use new Promise when it's necessary
+	"promise/avoid-new": "off",
 	// There are no good usecases for that, all callbacks are valid
 	"promise/prefer-await-to-callbacks": "off",
 	// There are false positives on `z.foo().catch()`
@@ -171,16 +170,16 @@ export const disabledRules: DummyRuleMap = {
 	"vitest/require-test-timeout": "off",
 } as const;
 
-const disabledTailwindRules: DummyRuleMap = {
+const disabledTailwindRules: OxlintConfig["rules"] = {
 	// Maintained by formatter
 	"better-tailwindcss/enforce-consistent-class-order": "off",
 	// This doesn't work out good with formatter
 	"better-tailwindcss/enforce-consistent-line-wrapping": "off",
 } as const;
 
-export const overridenRules: DummyRuleMap = {
+export const overridenRules: OxlintConfig["rules"] = {
 	// We use a lot of sensible magic numbers
-	"eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
+	"eslint/no-magic-numbers": ["error", { ignore: [0, 1, -1] }],
 	// `void foo` is a mark of deliberately floating promise
 	"eslint/no-void": ["error", { allowAsStatement: true }],
 	// We enjoy sorting imports
@@ -208,17 +207,23 @@ export const overridenRules: DummyRuleMap = {
 	],
 	// We want to allow `Amount ${amount}` to be used
 	"typescript/restrict-template-expressions": ["error", { allowNumber: true }],
+	// We want to be strict, but not too much
+	"typescript/strict-boolean-expressions": [
+		"error",
+		{
+			allowNullableBoolean: true,
+			allowNullableNumber: true,
+			allowNullableString: true,
+			allowNumber: true,
+			allowString: true,
+		},
+	],
 
 	// We want to check `foo.length !== 0`, not `foo.length > 0`
 	"unicorn/explicit-length-check": ["error", { "non-zero": "not-equal" }],
 	// Default 3 is too little
 	"unicorn/max-nested-calls": ["error", { max: 5 }],
 } as const;
-
-export const env: OxlintEnv = {
-	browser: true,
-	es2026: true,
-};
 
 const isNonNull = <T>(data: T | null): data is T => data !== null;
 
@@ -228,13 +233,15 @@ const getPackageJsonPlugin = () => import("eslint-plugin-package-json");
 const getPlaywrightPlugin = () => import("eslint-plugin-playwright");
 
 type ConfigOptions = {
-	rules?: DummyRuleMap;
-	env?: OxlintEnv;
+	rules?: OxlintConfig["rules"];
+	env?: OxlintConfig["env"];
 	ignorePatterns?: string[];
 	options?: OxlintConfig["options"];
 	categories?: OxlintConfig["categories"];
 	settings?: OxlintConfig["settings"];
 	overrides?: OxlintConfig["overrides"];
+	jsPlugins?: Exclude<OxlintConfig["jsPlugins"], null>;
+	globals?: OxlintConfig["globals"];
 	plugins?: {
 		tailwind?: {
 			config: {
@@ -253,13 +260,18 @@ type ConfigOptions = {
 
 export const getConfig = async ({
 	plugins: { tailwind, tanstackRouter, packageJson, playwright } = {},
-	env: envLocal = env,
+	env: envLocal = {
+		browser: true,
+		es2026: true,
+	},
 	ignorePatterns = [],
 	overrides = [],
+	jsPlugins = [],
 	rules,
 	options,
 	categories,
 	settings,
+	globals,
 }: ConfigOptions = {}): Promise<OxlintConfig> =>
 	({
 		categories: {
@@ -273,7 +285,8 @@ export const getConfig = async ({
 			...categories,
 		},
 		env: envLocal,
-		ignorePatterns: [".history/**", ...ignorePatterns],
+		globals,
+		ignorePatterns: [...baseIgnorePatterns, ...ignorePatterns],
 		jsPlugins: [
 			tailwind
 				? {
@@ -293,6 +306,7 @@ export const getConfig = async ({
 			playwright
 				? { name: "playwright", specifier: "eslint-plugin-playwright" }
 				: null,
+			...jsPlugins,
 		].filter(isNonNull),
 		options: {
 			denyWarnings: true,
@@ -308,14 +322,14 @@ export const getConfig = async ({
 					"import/no-default-export": "off",
 					"node/no-top-level-await": "off",
 				},
-			} satisfies OxlintOverride,
+			} satisfies NonNullable<OxlintConfig["overrides"]>[number],
 			{
 				files: ["**/*.d.ts"],
 				rules: {
 					// Decalaration files are exactly where triple slash references are used
 					"typescript/triple-slash-reference": "off",
 				},
-			} satisfies OxlintOverride,
+			} satisfies NonNullable<OxlintConfig["overrides"]>[number],
 			playwright
 				? ({
 						files: playwright.files,
@@ -334,7 +348,7 @@ export const getConfig = async ({
 									}
 								: {}),
 						},
-					} satisfies OxlintOverride)
+					} satisfies NonNullable<OxlintConfig["overrides"]>[number])
 				: null,
 			...overrides,
 		].filter(isNonNull),
