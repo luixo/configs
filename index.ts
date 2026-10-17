@@ -1,2 +1,7 @@
-export { config as lintConfig } from "./packages/oxlint/config";
-export { config as formatConfig } from "./packages/oxfmt/config";
+export {
+	getConfig as getLintConfig,
+	overridenRules,
+	disabledRules,
+	env as lintEnv,
+} from "./packages/oxlint/config";
+export { getConfig as getFormatConfig } from "./packages/oxfmt/config";

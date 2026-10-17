@@ -1,1 +1,3 @@
-export { config as default } from "./packages/oxfmt/config.ts";
+import { getConfig } from "./packages/oxfmt/config.ts";
+
+export default getConfig();

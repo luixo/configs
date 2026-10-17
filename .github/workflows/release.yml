@@ -44,8 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-env
-      - run: npm run build
-      - run: npm run check:package
+      - run: bun run build
       - id: pack
         uses: changesets/action/pack@v2
         with:

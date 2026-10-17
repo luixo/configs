@@ -1,5 +1,13 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  deps: { onlyBundle: [] },
+  attw: {
+    level: "error",
+    profile: "esm-only",
+  },
+  deps: {
+    neverBundle: true,
+  },
+  entry: "index.ts",
+  publint: true,
 });
