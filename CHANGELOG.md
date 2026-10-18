@@ -1,5 +1,11 @@
 # @luixo/configs
 
+## 0.3.0
+
+### Minor Changes
+
+- [`db8d319`](https://github.com/luixo/configs/commit/db8d319ccdee4e5f9ee02af508d7ddc5a4b6f5fb) Thanks [@luixo](https://github.com/luixo)! - Pre-commit hook and general config
+
 ## 0.2.0
 
 ### Minor Changes
