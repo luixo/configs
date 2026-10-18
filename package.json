@@ -23,12 +23,16 @@
 	"scripts": {
 		"build": "tsdown",
 		"changeset": "changeset add",
-		"format": "bun --bun oxfmt --write",
-		"format:verify": "bun --bun oxfmt --check",
-		"lint": "bun --bun oxlint",
+		"deps": "knip",
+		"format": "oxfmt --write",
+		"format:verify": "oxfmt --check",
+		"lint": "oxlint",
 		"lint-staged": "lint-staged",
-		"lint:fix": "bun lint --fix",
+		"lint:fix": "oxlint --fix",
 		"typecheck": "bun check"
+	},
+	"dependencies": {
+		"oxlint-plugin-eslint": "^1.88.0"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/core": "^0.18.5",
@@ -39,21 +43,24 @@
 		"eslint-plugin-better-tailwindcss": "^4.9.1",
 		"eslint-plugin-package-json": "^1.10.1",
 		"eslint-plugin-playwright": "^2.12.1",
+		"knip": "^6.42.0",
 		"lint-staged": "^15.2.2",
 		"oxfmt": "^0.73.0",
 		"oxlint": "^1.88.0",
 		"oxlint-tsgolint": "^7.0.2004",
 		"pre-commit": "^1.2.2",
 		"publint": "^0.3.25",
+		"remeda": "^2.52.0",
 		"tsdown": "^0.23.1"
 	},
 	"peerDependencies": {
+		"knip": "^6.42.0",
 		"oxfmt": "^0.73.0",
 		"oxlint": "^1.88.0"
 	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx}": [
-			"bun --bun oxlint --fix"
+			"oxlint"
 		]
 	},
 	"pre-commit": [

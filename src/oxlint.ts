@@ -1,4 +1,5 @@
 import type { OxlintConfig } from "oxlint";
+import { isNonNullish } from "remeda";
 
 import { baseIgnorePatterns } from "./common.ts";
 
@@ -243,9 +244,6 @@ export const overridenRules: OxlintConfig["rules"] = {
 	"vitest/consistent-test-it": ["error", { fn: "test" }],
 } as const;
 
-const isNonNullish = <T>(data: T | null | undefined): data is T =>
-	data !== null && data !== undefined;
-
 type MergableConfig = Omit<OxlintConfig, "plugins"> & {
 	plugins?: Partial<
 		Record<NonNullable<OxlintConfig["plugins"]>[number], boolean>
@@ -265,35 +263,39 @@ const mergeConfigs = (...configs: MergableConfig[]) =>
 				plugins,
 				rules,
 				settings,
+				...rest
 			},
-			config,
+			{
+				categories: configCategories,
+				env: configEnv,
+				globals: configGlobals,
+				ignorePatterns: configIgnorePatterns,
+				jsPlugins: configJsPlugins,
+				options: configOptions,
+				overrides: configOverrides,
+				plugins: configPlugins,
+				rules: configRules,
+				settings: configSettings,
+				...configRest
+			},
 		) => ({
-			categories: { ...categories, ...config.categories },
-			env: { ...env, ...config.env },
-			globals: { ...globals, ...config.globals },
+			categories: { ...categories, ...configCategories },
+			env: { ...env, ...configEnv },
+			globals: { ...globals, ...configGlobals },
 			ignorePatterns: [
 				...(ignorePatterns ?? []),
-				...(config.ignorePatterns ?? []),
+				...(configIgnorePatterns ?? []),
 			],
-			jsPlugins: [...(jsPlugins ?? []), ...(config.jsPlugins ?? [])],
-			options: { ...options, ...config.options },
-			overrides: [...(overrides ?? []), ...(config.overrides ?? [])],
-			plugins: { ...plugins, ...config.plugins },
-			rules: { ...rules, ...config.rules },
-			settings: { ...settings, ...config.settings },
+			jsPlugins: [...(jsPlugins ?? []), ...(configJsPlugins ?? [])],
+			options: { ...options, ...configOptions },
+			overrides: [...(overrides ?? []), ...(configOverrides ?? [])],
+			plugins: { ...plugins, ...configPlugins },
+			rules: { ...rules, ...configRules },
+			settings: { ...settings, ...configSettings },
+			...rest,
+			...configRest,
 		}),
-		{
-			categories: {},
-			env: {},
-			globals: {},
-			ignorePatterns: [],
-			jsPlugins: [],
-			options: {},
-			overrides: [],
-			plugins: {},
-			rules: {},
-			settings: {},
-		},
+		{},
 	);
 
 type TailwindConfig = { entryPoint: string };
@@ -664,6 +666,7 @@ const getBaseConfig = (): MergableConfig => ({
 		es2026: true,
 	},
 	ignorePatterns: baseIgnorePatterns,
+	jsPlugins: [{ name: "eslint-js", specifier: "oxlint-plugin-eslint" }],
 	options: {
 		denyWarnings: true,
 		reportUnusedDisableDirectives: "error",
@@ -775,20 +778,19 @@ export const getConfig = async ({
 		banBarrelImport: importOptions?.banBarrel,
 		banReactMemo: react?.banMemo,
 		overrides: restricted?.syntaxOverrides,
-		/* oxlint-disable */
 		previousOverrides: rawMergedConfig.overrides
 			?.map((override) =>
-				override.rules?.["eslint-js/no-restricted-syntax"]
-					? {
+				override.rules?.["eslint-js/no-restricted-syntax"] === undefined
+					? undefined
+					: {
+							files: override.files,
 							rules: (
-								override.rules?.["eslint-js/no-restricted-syntax"] as [
+								override.rules["eslint-js/no-restricted-syntax"] as [
 									string,
 									...RestrictedSyntaxRule[],
 								]
-							)?.slice(1) as RestrictedSyntaxRule[],
-							files: override.files,
-						}
-					: undefined,
+							).slice(1) as RestrictedSyntaxRule[],
+						},
 			)
 			.filter(isNonNullish),
 		previousRules: (
@@ -797,7 +799,6 @@ export const getConfig = async ({
 				| undefined
 		)?.slice(1) as RestrictedSyntaxRule[] | undefined,
 		rulesOverrides: restricted?.syntaxRulesOverrides,
-		/* oxlint-enable */
 	});
 	const { plugins: pluginsRecord = {}, ...mergedConfig } = mergeConfigs(
 		rawMergedConfig,
