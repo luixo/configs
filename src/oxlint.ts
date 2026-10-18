@@ -79,8 +79,6 @@ export const disabledRules: OxlintConfig["rules"] = {
 	"react/display-name": "off",
 	// There's a forbid syntax rule for that
 	"react/forbid-component-props": "off",
-	// We use non-function components most of the time
-	"react/function-component-definition": "off",
 	// No need for that
 	"react/jsx-filename-extension": "off",
 	// We'll manage these
@@ -95,6 +93,8 @@ export const disabledRules: OxlintConfig["rules"] = {
 	"react/only-export-components": "off",
 	// Compilers know how to manage this
 	"react/react-in-jsx-scope": "off",
+	// If we supress the rule - we know what we are doing
+	"react/rule-suppression": "off",
 
 	// This is heavily guarded by typescript itself
 	"typescript/consistent-return": "off",
@@ -185,6 +185,14 @@ export const overridenRules: OxlintConfig["rules"] = {
 	// We enjoy sorting imports
 	"eslint/sort-imports": ["error", { ignoreDeclarationSort: true }],
 
+	// We use arrow functions as much as possible
+	"react/function-component-definition": [
+		"error",
+		{
+			namedComponents: "arrow-function",
+			unnamedComponents: "arrow-function",
+		},
+	],
 	// Allow expressions for stuff like `<>{children}</>`
 	"react/jsx-no-useless-fragment": ["error", { allowExpressions: true }],
 
@@ -218,182 +226,587 @@ export const overridenRules: OxlintConfig["rules"] = {
 			allowString: true,
 		},
 	],
+	// We want to exhause types like `'a' | 'b' | 'c'`
+	"typescript/switch-exhaustiveness-check": [
+		"error",
+		{ considerDefaultExhaustiveForUnions: true },
+	],
 
 	// We want to check `foo.length !== 0`, not `foo.length > 0`
 	"unicorn/explicit-length-check": ["error", { "non-zero": "not-equal" }],
 	// Default 3 is too little
 	"unicorn/max-nested-calls": ["error", { max: 5 }],
+	// We prefer NO braces in switch cases unless we really need them
+	"unicorn/switch-case-braces": ["error", "avoid"],
+
+	// Vitest test are run with `test`, not `it`
+	"vitest/consistent-test-it": ["error", { fn: "test" }],
 } as const;
 
-const isNonNull = <T>(data: T | null): data is T => data !== null;
+const isNonNullish = <T>(data: T | null | undefined): data is T =>
+	data !== null && data !== undefined;
 
-const getTailwindPlugin = () => import("eslint-plugin-better-tailwindcss");
-const getTanstackRouterPlugin = () => import("@tanstack/eslint-plugin-router");
-const getPackageJsonPlugin = () => import("eslint-plugin-package-json");
-const getPlaywrightPlugin = () => import("eslint-plugin-playwright");
+type MergableConfig = Omit<OxlintConfig, "plugins"> & {
+	plugins?: Partial<
+		Record<NonNullable<OxlintConfig["plugins"]>[number], boolean>
+	>;
+};
+const mergeConfigs = (...configs: MergableConfig[]) =>
+	configs.reduce<MergableConfig>(
+		(
+			{
+				categories,
+				env,
+				globals,
+				ignorePatterns,
+				jsPlugins,
+				options,
+				overrides,
+				plugins,
+				rules,
+				settings,
+			},
+			config,
+		) => ({
+			categories: { ...categories, ...config.categories },
+			env: { ...env, ...config.env },
+			globals: { ...globals, ...config.globals },
+			ignorePatterns: [
+				...(ignorePatterns ?? []),
+				...(config.ignorePatterns ?? []),
+			],
+			jsPlugins: [...(jsPlugins ?? []), ...(config.jsPlugins ?? [])],
+			options: { ...options, ...config.options },
+			overrides: [...(overrides ?? []), ...(config.overrides ?? [])],
+			plugins: { ...plugins, ...config.plugins },
+			rules: { ...rules, ...config.rules },
+			settings: { ...settings, ...config.settings },
+		}),
+		{
+			categories: {},
+			env: {},
+			globals: {},
+			ignorePatterns: [],
+			jsPlugins: [],
+			options: {},
+			overrides: [],
+			plugins: {},
+			rules: {},
+			settings: {},
+		},
+	);
 
-type ConfigOptions = {
-	rules?: OxlintConfig["rules"];
-	env?: OxlintConfig["env"];
-	ignorePatterns?: string[];
-	options?: OxlintConfig["options"];
-	categories?: OxlintConfig["categories"];
-	settings?: OxlintConfig["settings"];
-	overrides?: OxlintConfig["overrides"];
-	jsPlugins?: Exclude<OxlintConfig["jsPlugins"], null>;
-	globals?: OxlintConfig["globals"];
-	plugins?: {
-		tailwind?: {
-			config: {
-				entryPoint: string;
-				callees?: string[];
-			};
-		};
-		packageJson?: true;
-		playwright?: {
-			files: string[];
-			assertFunctionNames?: string[];
-		};
-		tanstackRouter?: true;
+type TailwindConfig = { entryPoint: string };
+const getTailwindConfig = async (
+	config?: TailwindConfig,
+): Promise<MergableConfig> => {
+	if (!config) {
+		return {};
+	}
+	const tailwindPlugin = await import("eslint-plugin-better-tailwindcss");
+	return {
+		jsPlugins: [
+			{
+				name: "better-tailwindcss",
+				specifier: "eslint-plugin-better-tailwindcss",
+			},
+		],
+		rules: {
+			...Object.fromEntries(
+				Object.keys(tailwindPlugin.default.rules).map((key) => [
+					`better-tailwindcss/${key}`,
+					"error",
+				]),
+			),
+			...disabledTailwindRules,
+		},
+		settings: {
+			"better-tailwindcss": {
+				entryPoint: config.entryPoint,
+			},
+		},
 	};
 };
 
-export const getConfig = async ({
-	plugins: { tailwind, tanstackRouter, packageJson, playwright } = {},
-	env: envLocal = {
+type VitestConfig = { files?: string[] };
+const getVitestConfig = (config?: VitestConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		overrides: config.files
+			? [
+					{
+						files: config.files,
+						rules: {
+							// We use `use` function in Vitest tests which clashes with this rule
+							"react/rules-of-hooks": "off",
+						},
+					},
+				]
+			: [],
+		plugins: {
+			vitest: true,
+		},
+	};
+};
+
+type TanstackRouterConfig = {
+	routes: string[];
+};
+const getTanstackRouterConfig = async (
+	config?: TanstackRouterConfig,
+): Promise<MergableConfig> => {
+	if (!config) {
+		return {};
+	}
+	const plugin = await import("@tanstack/eslint-plugin-router");
+	return {
+		jsPlugins: [
+			{
+				name: "@tanstack/router",
+				specifier: "@tanstack/eslint-plugin-router",
+			},
+		],
+		overrides: [
+			{
+				files: config.routes,
+				rules: {
+					// We use routes in function components that are defined before the component
+					"no-use-before-define": "off",
+				},
+			},
+		],
+		// oxlint-disable-next-line typescript/no-non-null-assertion
+		rules: plugin.default.configs["flat/recommended"][0]!.rules,
+	};
+};
+
+type PackageJsonConfig = boolean;
+const getPackageJsonConfig = async (
+	config?: PackageJsonConfig,
+): Promise<MergableConfig> => {
+	if (!config) {
+		return {};
+	}
+	const plugin = await import("eslint-plugin-package-json");
+	return {
+		jsPlugins: [
+			{ name: "package-json", specifier: "eslint-plugin-package-json" },
+		],
+		rules: plugin.configs.recommended.rules,
+	};
+};
+
+type PlaywrightConfig = {
+	files: string[];
+	assertFunctionNames?: string[];
+};
+const getPlaywrightConfig = async (
+	config?: PlaywrightConfig,
+): Promise<MergableConfig> => {
+	if (!config) {
+		return {};
+	}
+	const plugin = await import("eslint-plugin-playwright");
+	return {
+		jsPlugins: [{ name: "playwright", specifier: "eslint-plugin-playwright" }],
+		overrides: [
+			{
+				files: config.files,
+				rules: {
+					...plugin.default.configs["flat/recommended"].rules,
+					...(config.assertFunctionNames
+						? {
+								"playwright/expect-expect": [
+									"error",
+									{
+										assertFunctionNames: config.assertFunctionNames,
+									},
+								] as const,
+							}
+						: {}),
+					// We use `use` function in Playwright tests which clashes with this rule
+					"react/rules-of-hooks": "off",
+					// Playwright tests don't need vitest rules
+					"vitest/consistent-test-filename": "off",
+					"vitest/prefer-each": "off",
+					"vitest/valid-expect": "off",
+				},
+			} satisfies NonNullable<OxlintConfig["overrides"]>[number],
+		],
+	};
+};
+
+type ServerSideConfig = {
+	files: string[];
+	allowConsole?: string[];
+	allowProcess?: string[];
+};
+const getServerSideConfig = (config?: ServerSideConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		overrides: (
+			[
+				{
+					// These are packages that allow server-side code
+					files: config.files,
+					rules: {
+						"import/no-nodejs-modules": "off",
+					},
+				},
+				config.allowConsole
+					? ({
+							files: config.allowConsole,
+							rules: {
+								"no-console": "off",
+							},
+						} as const)
+					: null,
+				config.allowProcess
+					? ({
+							files: config.allowProcess,
+							rules: {
+								"node/no-process-env": "off",
+							},
+						} as const)
+					: null,
+			] as const
+		).filter(isNonNullish),
+	};
+};
+
+type RestrictedSyntaxRule = {
+	selector: string;
+	message: string;
+};
+type RestrictedSyntaxOverride = {
+	files: string[];
+	rules: RestrictedSyntaxRule[];
+};
+type RestrictedSyntaxConfig = {
+	banBarrelImport?: boolean;
+	banReactMemo?: boolean;
+	overrides?: RestrictedSyntaxOverride[];
+	rulesOverrides?: RestrictedSyntaxRule[];
+	previousRules?: RestrictedSyntaxRule[];
+	previousOverrides?: RestrictedSyntaxOverride[];
+};
+const getRestrictedSyntaxConfig = (
+	config?: RestrictedSyntaxConfig,
+): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	const overrides = config.overrides ?? [];
+	const rawRules = [
+		config.banBarrelImport
+			? {
+					message: "Do not use barrel export, prefer named export",
+					selector: "ExportAllDeclaration",
+				}
+			: null,
+		config.banReactMemo
+			? {
+					message:
+						"No need to use `React.memo`, we have a react compiler turned on",
+					selector:
+						"MemberExpression[object.name='React'][property.name='memo']",
+				}
+			: null,
+	].filter(isNonNullish);
+	return {
+		overrides: overrides.map(({ files, rules }) => ({
+			files,
+			rules: {
+				"eslint-js/no-restricted-syntax": [
+					"error",
+					[...rawRules, ...rules, ...(config.rulesOverrides ?? [])],
+				],
+			},
+		})),
+		rules: {
+			"eslint-js/no-restricted-syntax": [
+				"error",
+				...rawRules,
+				...(config.rulesOverrides ?? []),
+			],
+		},
+	};
+};
+
+type RestrictedConfig = {
+	globals?: {
+		name: string;
+		message: string;
+	}[];
+	properties?: {
+		object: string;
+		property: string;
+		message: string;
+	}[];
+	syntaxOverrides?: RestrictedSyntaxConfig["overrides"];
+	syntaxRulesOverrides?: RestrictedSyntaxConfig["rulesOverrides"];
+};
+const getRestrictedConfig = (config?: RestrictedConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		rules: {
+			// Custom restricted globals like `window` or `document`
+			"eslint/no-restricted-globals": config.globals
+				? ["error", ...config.globals]
+				: "error",
+			// Custom restricted properties like `Object.keys` or `Object.entries`
+			"eslint/no-restricted-properties": config.properties
+				? ["error", ...config.properties]
+				: "error",
+		},
+	};
+};
+
+type ReactConfig = {
+	allowedStrings?: string[];
+	additionalHooks?: string[];
+	banMemo?: boolean;
+};
+const getReactConfig = (config?: ReactConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		rules: {
+			"react/exhaustive-deps": config.additionalHooks
+				? [
+						"error",
+						// Custom hooks
+						{ additionalHooks: `(${config.additionalHooks.join(",")})` },
+					]
+				: "error",
+			"react/jsx-no-literals": [
+				"error",
+				{
+					// Custom allowed string can be added
+					allowedStrings: config.allowedStrings,
+					ignoreProps: true,
+					noAttributeStrings: true,
+					noStrings: true,
+				},
+			],
+		},
+	};
+};
+
+type I18nConfig = {
+	ignore?: string[] | true;
+};
+const getI18nConfig = (config?: I18nConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		overrides: Array.isArray(config.ignore)
+			? [
+					{
+						files: config.ignore,
+						rules: {
+							"react/jsx-no-literals": "off",
+						},
+					},
+				]
+			: [],
+		rules:
+			config.ignore === true
+				? {
+						"react/jsx-no-literals": "off",
+					}
+				: {},
+	};
+};
+
+type ImportConfig = {
+	allowDefault?: string[];
+	banBarrel?: boolean;
+};
+const getImportConfig = (config?: ImportConfig): MergableConfig => {
+	if (!config) {
+		return {};
+	}
+	return {
+		overrides: [
+			config.allowDefault
+				? ({
+						files: config.allowDefault,
+						rules: {
+							"import/no-default-export": "off",
+						},
+					} as const)
+				: null,
+		].filter(isNonNullish),
+	};
+};
+
+const getBaseConfig = (): MergableConfig => ({
+	categories: {
+		correctness: "error",
+		nursery: "error",
+		pedantic: "error",
+		perf: "error",
+		restriction: "error",
+		style: "error",
+		suspicious: "error",
+	},
+	env: {
 		browser: true,
 		es2026: true,
 	},
-	ignorePatterns = [],
-	overrides = [],
-	jsPlugins = [],
-	rules,
-	options,
-	categories,
-	settings,
-	globals,
-}: ConfigOptions = {}): Promise<OxlintConfig> =>
-	({
-		categories: {
-			correctness: "error",
-			nursery: "error",
-			pedantic: "error",
-			perf: "error",
-			restriction: "error",
-			style: "error",
-			suspicious: "error",
-			...categories,
-		},
-		env: envLocal,
-		globals,
-		ignorePatterns: [...baseIgnorePatterns, ...ignorePatterns],
-		jsPlugins: [
-			tailwind
-				? {
-						name: "better-tailwindcss",
-						specifier: "eslint-plugin-better-tailwindcss",
-					}
-				: null,
-			tanstackRouter
-				? {
-						name: "@tanstack/router",
-						specifier: "@tanstack/eslint-plugin-router",
-					}
-				: null,
-			packageJson
-				? { name: "package-json", specifier: "eslint-plugin-package-json" }
-				: null,
-			playwright
-				? { name: "playwright", specifier: "eslint-plugin-playwright" }
-				: null,
-			...jsPlugins,
-		].filter(isNonNull),
-		options: {
-			denyWarnings: true,
-			reportUnusedDisableDirectives: "error",
-			typeAware: true,
-			...options,
-		},
-		overrides: [
-			{
-				files: ["**/*.config.{j,t}s"],
-				rules: {
-					// Config files tend to export default
-					"import/no-default-export": "off",
-					"node/no-top-level-await": "off",
-				},
-			} satisfies NonNullable<OxlintConfig["overrides"]>[number],
-			{
-				files: ["**/*.d.ts"],
-				rules: {
-					// Decalaration files are exactly where triple slash references are used
-					"typescript/triple-slash-reference": "off",
-				},
-			} satisfies NonNullable<OxlintConfig["overrides"]>[number],
-			playwright
-				? ({
-						files: playwright.files,
-						rules: {
-							...(await getPlaywrightPlugin()).default.configs[
-								"flat/recommended"
-							].rules,
-							...(playwright.assertFunctionNames
-								? {
-										"playwright/expect-expect": [
-											"error",
-											{
-												assertFunctionNames: playwright.assertFunctionNames,
-											},
-										] as const,
-									}
-								: {}),
-						},
-					} satisfies NonNullable<OxlintConfig["overrides"]>[number])
-				: null,
-			...overrides,
-		].filter(isNonNull),
-		plugins: [
-			"eslint",
-			"react",
-			"react-perf",
-			"unicorn",
-			"typescript",
-			"oxc",
-			"import",
-			"vitest",
-			"jsx-a11y",
-			"promise",
-			"node",
-		],
-		rules: {
-			...(tailwind
-				? {
-						...Object.fromEntries(
-							Object.keys((await getTailwindPlugin()).default.rules).map(
-								(key) => [`better-tailwindcss/${key}`, "error"],
-							),
-						),
-						...disabledTailwindRules,
-					}
-				: {}),
-			...(tanstackRouter
-				? (await getTanstackRouterPlugin()).default.configs[
-						"flat/recommended"
-					][0]?.rules
-				: {}),
-			...(packageJson
-				? (await getPackageJsonPlugin()).configs.recommended.rules
-				: {}),
-			...disabledRules,
-			...overridenRules,
-			...rules,
-		},
-		settings: {
-			...(tailwind
-				? {
-						"better-tailwindcss": tailwind.config,
-					}
-				: {}),
-			...settings,
-		},
-	}) as const satisfies OxlintConfig;
+	ignorePatterns: baseIgnorePatterns,
+	options: {
+		denyWarnings: true,
+		reportUnusedDisableDirectives: "error",
+		typeAware: true,
+	},
+	overrides: [
+		{
+			files: ["**/*.config.{j,t}s"],
+			rules: {
+				// Config files tend to export default
+				"import/no-default-export": "off",
+				"import/no-nodejs-modules": "off",
+				"node/no-top-level-await": "off",
+			},
+		} satisfies NonNullable<OxlintConfig["overrides"]>[number],
+		{
+			files: ["**/*.d.ts"],
+			rules: {
+				// Decalaration files are exactly where triple slash references are used
+				"typescript/triple-slash-reference": "off",
+			},
+		} satisfies NonNullable<OxlintConfig["overrides"]>[number],
+	],
+	plugins: {
+		eslint: true,
+		import: true,
+		"jsx-a11y": true,
+		node: true,
+		oxc: true,
+		promise: true,
+		react: true,
+		"react-perf": true,
+		typescript: true,
+		unicorn: true,
+	},
+	rules: {
+		...disabledRules,
+		...overridenRules,
+	},
+});
+
+type ConfigOptions = {
+	jsPlugins?: Exclude<OxlintConfig["jsPlugins"], null>;
+	plugins?: MergableConfig["plugins"];
+	tailwind?: TailwindConfig;
+	vitest?: VitestConfig;
+	tanstackRouter?: TanstackRouterConfig;
+	packageJson?: PackageJsonConfig;
+	playwright?: PlaywrightConfig;
+	serverSide?: ServerSideConfig;
+	restricted?: RestrictedConfig;
+	react?: ReactConfig;
+	i18n?: I18nConfig;
+	import?: ImportConfig;
+} & Pick<
+	OxlintConfig,
+	| "env"
+	| "rules"
+	| "options"
+	| "ignorePatterns"
+	| "categories"
+	| "settings"
+	| "overrides"
+	| "globals"
+> &
+	ReactConfig;
+
+export const getConfig = async ({
+	tailwind,
+	tanstackRouter,
+	vitest,
+	packageJson = true,
+	playwright,
+	serverSide,
+	restricted,
+	react,
+	i18n,
+	import: importOptions,
+	...config
+}: ConfigOptions = {}): Promise<OxlintConfig> => {
+	const baseConfig = getBaseConfig();
+	const tailwindConfig = await getTailwindConfig(tailwind);
+	const tanstackRouterConfig = await getTanstackRouterConfig(tanstackRouter);
+	const vitestConfig = getVitestConfig(vitest);
+	const packageJsonConfig = await getPackageJsonConfig(packageJson);
+	const playwrightConfig = await getPlaywrightConfig(playwright);
+	const serverSideConfig = getServerSideConfig(serverSide);
+	const reactConfig = getReactConfig(react);
+	const i18nConfig = getI18nConfig(i18n);
+	const importConfig = getImportConfig(importOptions);
+	const restrictedConfig = getRestrictedConfig(restricted);
+	const overrideConfig = config satisfies MergableConfig;
+	const rawMergedConfig = mergeConfigs(
+		baseConfig,
+		vitestConfig,
+		tanstackRouterConfig,
+		packageJsonConfig,
+		playwrightConfig,
+		tailwindConfig,
+		serverSideConfig,
+		restrictedConfig,
+		reactConfig,
+		i18nConfig,
+		importConfig,
+		// Warning! This should be the last one!
+		overrideConfig,
+	);
+	const restrictedSyntaxConfig = getRestrictedSyntaxConfig({
+		banBarrelImport: importOptions?.banBarrel,
+		banReactMemo: react?.banMemo,
+		overrides: restricted?.syntaxOverrides,
+		/* oxlint-disable */
+		previousOverrides: rawMergedConfig.overrides
+			?.map((override) =>
+				override.rules?.["eslint-js/no-restricted-syntax"]
+					? {
+							rules: (
+								override.rules?.["eslint-js/no-restricted-syntax"] as [
+									string,
+									...RestrictedSyntaxRule[],
+								]
+							)?.slice(1) as RestrictedSyntaxRule[],
+							files: override.files,
+						}
+					: undefined,
+			)
+			.filter(isNonNullish),
+		previousRules: (
+			rawMergedConfig.rules?.["eslint-js/no-restricted-syntax"] as
+				| [string, ...RestrictedSyntaxRule[]]
+				| undefined
+		)?.slice(1) as RestrictedSyntaxRule[] | undefined,
+		rulesOverrides: restricted?.syntaxRulesOverrides,
+		/* oxlint-enable */
+	});
+	const { plugins: pluginsRecord = {}, ...mergedConfig } = mergeConfigs(
+		rawMergedConfig,
+		restrictedSyntaxConfig,
+	);
+	return {
+		...mergedConfig,
+		plugins: Object.entries(pluginsRecord)
+			.filter(([, value]) => value)
+			.map(([key]) => key as keyof OxlintConfig["plugins"]),
+	};
+};
