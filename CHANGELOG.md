@@ -1,5 +1,11 @@
 # @luixo/configs
 
+## 0.2.0
+
+### Minor Changes
+
+- [`3318f4e`](https://github.com/luixo/configs/commit/3318f4eee010e007d6be0ceb3b6df1351a4eae33) Thanks [@luixo](https://github.com/luixo)! - Full oxlint config
+
 ## 0.1.0
 
 ### Minor Changes
