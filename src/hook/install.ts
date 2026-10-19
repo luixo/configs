@@ -13,7 +13,10 @@ const { stdout: rawGitRepositoryRoot } = await promisifiedExec(
 	"git rev-parse --show-toplevel",
 );
 const gitRepositoryRoot = rawGitRepositoryRoot.trim();
-const gitRoot = path.join(gitRepositoryRoot.trim(), ".git");
+const { stdout: rawHooksDirectory } = await promisifiedExec(
+	"git rev-parse --path-format=absolute --git-path hooks",
+);
+const hooksDirectory = rawHooksDirectory.trim();
 const packageJson = await fs.readFile(
 	path.join(gitRepositoryRoot, "package.json"),
 	"utf8",
@@ -26,7 +29,8 @@ const HOOK_CONTENT = [
 	`node ${isSelf ? "." : `./node_modules/${packageName}`}/dist/hook/pre-commit.mjs`,
 ].join("\n");
 
-const preCommitPath = path.join(gitRoot, "/hooks/pre-commit");
+await fs.mkdir(hooksDirectory, { recursive: true });
+const preCommitPath = path.join(hooksDirectory, "pre-commit");
 
 let oldHook = "";
 const preCommitExists = await fs
@@ -41,7 +45,7 @@ if (preCommitExists) {
 	} else {
 		oldHook = await fs.readFile(preCommitPath, "utf8");
 		if (oldHook !== HOOK_CONTENT) {
-			console.log(`Found git path: "${gitRoot}"`);
+			console.log(`Found hooks path: "${hooksDirectory}"`);
 			console.log("Detected an existing git pre-commit hook");
 			await fs.writeFile(`${preCommitPath}.old`, oldHook);
 		}
@@ -49,7 +53,7 @@ if (preCommitExists) {
 }
 
 if (oldHook !== HOOK_CONTENT) {
-	console.log(`Found git path: "${gitRoot}"`);
+	console.log(`Found hooks path: "${hooksDirectory}"`);
 	await fs.writeFile(preCommitPath, HOOK_CONTENT, { mode: 0o755 });
 	console.log("Hook saved");
 }
