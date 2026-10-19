@@ -26,9 +26,9 @@
 		"deps": "knip",
 		"format": "oxfmt --write",
 		"format:verify": "oxfmt --check",
-		"install": "bun src/hook/install.ts",
 		"lint": "oxlint",
 		"lint:fix": "oxlint --fix",
+		"postinstall": "node scripts/postinstall.mjs",
 		"typecheck": "bun check"
 	},
 	"dependencies": {

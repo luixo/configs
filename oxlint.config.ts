@@ -12,12 +12,21 @@ export default getConfig({
 				"node/no-top-level-await": "off",
 			},
 		},
+		{
+			files: ["scripts/postinstall.mjs"],
+			rules: {
+				"node/no-process-env": "off",
+				"node/no-sync": "off",
+				"node/no-top-level-await": "off",
+				"unicorn/no-process-exit": "off",
+			},
+		},
 	],
 	rules: {
 		// We'll migrate to a namespace later
 		"import/no-relative-parent-imports": "off",
 	},
 	serverSide: {
-		files: ["src/**"],
+		files: ["src/**", "scripts/**"],
 	},
 });
