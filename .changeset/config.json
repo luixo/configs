@@ -6,7 +6,7 @@
 	"changelog": [
 		"@changesets/changelog-github",
 		{
-			"repo": "luixo/configs"
+			"repo": "oxiul/configs"
 		}
 	],
 	"commit": true,

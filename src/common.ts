@@ -5,4 +5,4 @@ export const arraify = <T>(input: T | T[] | undefined): T[] =>
 
 // This is our config name etc
 export const moduleName = "oxiul";
-export const packageName = "@luixo/configs";
+export const packageName = "@oxiul/configs";
