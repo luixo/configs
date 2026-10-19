@@ -1,5 +1,11 @@
 # @luixo/configs
 
+## 0.3.2
+
+### Patch Changes
+
+- [`38fc144`](https://github.com/luixo/configs/commit/38fc144d927d6444dba803fd537b6f2037287514) Thanks [@luixo](https://github.com/luixo)! - Include postinstall script in tarball
+
 ## 0.3.1
 
 ### Patch Changes
