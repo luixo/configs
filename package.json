@@ -15,8 +15,14 @@
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
 	"exports": {
-		"types": "./dist/index.d.mts",
-		"default": "./dist/index.mjs"
+		".": {
+			"types": "./dist/index.d.mts",
+			"default": "./dist/index.mjs"
+		},
+		"./workflows": {
+			"types": "./dist/workflows.d.mts",
+			"default": "./dist/workflows.mjs"
+		}
 	},
 	"publishConfig": {
 		"access": "public"
@@ -30,12 +36,17 @@
 		"lint": "oxlint",
 		"lint:fix": "oxlint --fix",
 		"postinstall": "node scripts/postinstall.mjs",
-		"typecheck": "bun check"
+		"test": "bun test",
+		"typecheck": "bun check",
+		"workflows": "bun workflows.config.ts",
+		"workflows:verify": "bun workflows.config.ts --check"
 	},
 	"dependencies": {
+		"@github-actions-workflow-ts/lib": "^2.6.1",
 		"cosmiconfig": "^10.0.1",
 		"listr2": "^11.4.0",
 		"oxlint-plugin-eslint": "^1.88.0",
+		"yaml": "^2.9.1",
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {

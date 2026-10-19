@@ -7,10 +7,22 @@ export default getConfig({
 	},
 	overrides: [
 		{
+			files: ["src/workflows.ts", "workflows.config.ts"],
+			rules: {
+				// Keep generated YAML in the conventional workflow key order.
+				"no-template-curly-in-string": "off",
+				"sort-keys": "off",
+			},
+		},
+		{
 			files: ["src/hook/**"],
 			rules: {
 				"node/no-top-level-await": "off",
 			},
+		},
+		{
+			files: ["workflows.config.ts"],
+			rules: { "node/no-top-level-await": "off" },
 		},
 		{
 			files: ["scripts/postinstall.mjs"],

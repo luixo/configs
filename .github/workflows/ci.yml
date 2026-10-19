@@ -8,6 +8,8 @@ jobs:
       - uses: actions/checkout@v7
       - run: git fetch origin main
       - uses: ./.github/actions/setup-env
+      - run: bun run workflows:verify
+      - run: bun test
       - run: bun run lint
       - run: bun run format:verify
       - run: bun run build
