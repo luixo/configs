@@ -30,10 +30,14 @@ try {
 	process.exit(0);
 }
 
-const [cmd, ...args] =
-	readName(gitRoot) === ownName
-		? ["bun", "src/hook/install.ts"]
-		: ["node", "dist/hook/install.mjs"];
+if (readName(gitRoot) === ownName) {
+	const build = spawnSync("bun", ["run", "build"], { stdio: "inherit" });
+	if (build.status !== 0) {
+		process.exit(build.status ?? 1);
+	}
+}
 
-const result = spawnSync(cmd, args, { stdio: "inherit" });
+const result = spawnSync("node", ["dist/hook/install.mjs"], {
+	stdio: "inherit",
+});
 process.exit(result.status ?? 1);

@@ -1,6 +1,6 @@
-import { getConfig } from "./src/knip.ts";
+import { getKnipConfig } from "@oxiul/configs";
 
-export default getConfig({
+export default getKnipConfig({
 	options: {
 		// What?
 		eslint: false,

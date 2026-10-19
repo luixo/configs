@@ -1,6 +1,6 @@
-import { getConfig } from "./src/oxlint.ts";
+import { getLintConfig } from "@oxiul/configs";
 
-export default getConfig({
+export default getLintConfig({
 	env: {
 		bun: true,
 		node: true,

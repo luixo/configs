@@ -1,3 +1,3 @@
-import { getConfig } from "./src/oxfmt.ts";
+import { getFormatConfig } from "@oxiul/configs";
 
-export default getConfig();
+export default getFormatConfig();
