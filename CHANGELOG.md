@@ -1,5 +1,11 @@
 # @luixo/configs
 
+## 0.3.1
+
+### Patch Changes
+
+- [`1a653b9`](https://github.com/luixo/configs/commit/1a653b91d2c7cf4be0d9ad44e9b6ef54fd3b48c3) Thanks [@luixo](https://github.com/luixo)! - Fix postinstall script
+
 ## 0.3.0
 
 ### Minor Changes
